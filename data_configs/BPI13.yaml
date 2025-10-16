@@ -1,0 +1,10 @@
+categorical_features:
+  # - resource country
+  - impact
+  - product
+  - previous_owner
+numerical_features:
+  - time_since_arrival # if this is set, there must be a column called arrival or enabled_time in the log
+temporal_columns:
+  - arrival
+  - start_timestamp
