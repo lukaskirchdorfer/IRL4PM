@@ -112,6 +112,11 @@ def build_decision_dataset(
     if missing:
         raise ValueError(f"Missing required columns: {missing}")
 
+    # Coerce temporal columns to datetimes for safety
+    for col in ['start_timestamp', 'end_timestamp', 'arrival', 'enabled_time', 'due_date']:
+        if col in df.columns and not np.issubdtype(df[col].dtype, np.datetime64):
+            df[col] = pd.to_datetime(df[col], errors='coerce')
+
     # Only rows where a start happened (decision moments)
     decisions = df.dropna(subset=['start_timestamp']).copy()
     decisions = decisions.sort_values('start_timestamp')
@@ -126,6 +131,8 @@ def build_decision_dataset(
     decision_counter = 0
 
     for _, drow in decisions.iterrows():
+        if pd.isna(drow['agent']):
+            continue
         agent = drow['agent']
         t = drow['start_timestamp']
         chosen_case = drow[case_id_col]
@@ -230,13 +237,16 @@ def train_decision_trees_per_agent(
         scalers=scalers
     )
 
+    # Print the feature names in the order used by the feature function
+    feature_names = list(numerical_features) + list(categorical_features)
+    print("Decision Tree training feature names (order):", feature_names)
+
     train_ds, _ = build_decision_dataset(
         train_log,
         feature_fn=feat_fn,
         negatives_per_pos=negatives_per_pos,
         random_state=random_state
     )
-    print(train_ds)
     feature_cols = [c for c in train_ds.columns if c.startswith('x')]
     models = {}
 
@@ -281,6 +291,10 @@ def train_decision_tree_global(
         categorical_features=categorical_features,
         scalers=scalers
     )
+
+    # Print the feature names in the order used by the feature function
+    feature_names = list(numerical_features) + list(categorical_features)
+    print("Global Decision Tree training feature names (order):", feature_names)
 
     train_ds, _ = build_decision_dataset(
         train_log,
@@ -404,12 +418,12 @@ def evaluate_topk_decisions_per_agent(
         agent_res["accuracy"] = agent_res.get("top1_accuracy", np.nan)
         results[agent] = agent_res
 
-    # Pretty print
-    for agent, metrics in results.items():
-        print(f"Agent: {agent}")
-        for k in ks:
-            print(f"  Top-{k} Accuracy: {metrics[f'top{k}_accuracy']:.4f}")
-        print(f"  Accuracy (Top-1): {metrics['accuracy']:.4f}")
+    # # Pretty print
+    # for agent, metrics in results.items():
+    #     print(f"Agent: {agent}")
+    #     for k in ks:
+    #         print(f"  Top-{k} Accuracy: {metrics[f'top{k}_accuracy']:.4f}")
+    #     print(f"  Accuracy (Top-1): {metrics['accuracy']:.4f}")
 
     return results
 
@@ -495,11 +509,11 @@ def evaluate_topk_decisions_global(
         agent_res["accuracy"] = agent_res.get("top1_accuracy", np.nan)
         results[agent] = agent_res
 
-    # Pretty print per agent
-    for agent, metrics in results.items():
-        print(f"Agent: {agent}")
-        for k in ks:
-            print(f"  Top-{k} Accuracy: {metrics[f'top{k}_accuracy']:.4f}")
-        print(f"  Accuracy (Top-1): {metrics['accuracy']:.4f}")
+    # # Pretty print per agent
+    # for agent, metrics in results.items():
+    #     print(f"Agent: {agent}")
+    #     for k in ks:
+    #         print(f"  Top-{k} Accuracy: {metrics[f'top{k}_accuracy']:.4f}")
+    #     print(f"  Accuracy (Top-1): {metrics['accuracy']:.4f}")
 
     return results

@@ -34,6 +34,8 @@ def prepare_data(trajectories, cat_features_dict, numerical_features, scaler=Non
 
     processed_trajectories = []
     for state, action_id in trajectories:
+        if len(state) == 0:
+            continue
         state_features = []
         action_idx = None
         for i, case in enumerate(state):

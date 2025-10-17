@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Tuple
 from pandas.api.types import is_datetime64_any_dtype, is_datetime64tz_dtype
 
 # --- helper: build decision metadata (same as before) ---
-def build_decision_meta(log_df: pd.DataFrame) -> Tuple[List[dict], pd.DataFrame]:
+def build_decision_meta(log_df: pd.DataFrame, train_log_agents: List[str]) -> Tuple[List[dict], pd.DataFrame]:
     """
     Build evaluation decisions and candidate universes.
     Returns:
@@ -21,6 +21,8 @@ def build_decision_meta(log_df: pd.DataFrame) -> Tuple[List[dict], pd.DataFrame]
     ac_idx = all_cases.set_index(case_id_col)
 
     for _, d in decisions_df.iterrows():
+        if pd.isna(d['agent']) or d['agent'] == '' or d['agent'] == 'nan' or d['agent'] not in train_log_agents:
+            continue
         t = d['start_timestamp']
         chosen = d[case_id_col]
         agent = d['agent']
@@ -62,6 +64,7 @@ def build_decision_meta(log_df: pd.DataFrame) -> Tuple[List[dict], pd.DataFrame]
 # --- FIFO baseline (per agent), top-k evaluation ---
 def evaluate_fifo_baseline_per_agent(
     test_log: pd.DataFrame,
+    train_log: pd.DataFrame,
     ks: List[int] = [1, 2, 3],
     stable_tiebreak: bool = False
 ) -> Dict[Any, Dict[str, float]]:
@@ -71,7 +74,8 @@ def evaluate_fifo_baseline_per_agent(
     Returns:
       { agent: {"top1_accuracy": ..., "top2_accuracy": ..., "top3_accuracy": ..., "accuracy": ...}, ... }
     """
-    decisions, all_cases = build_decision_meta(test_log)
+    train_log_agents = train_log['agent'].unique().tolist()
+    decisions, all_cases = build_decision_meta(test_log, train_log_agents)
 
     per_agent_hits: Dict[Any, Dict[int, int]] = {}
     per_agent_total: Dict[Any, int] = {}

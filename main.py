@@ -109,6 +109,10 @@ if __name__ == "__main__":
 
     # agent column should be converted to string
     log['agent'] = log['agent'].astype(str)
+    if 'case_id' in log.columns:
+        log['case_id'] = log['case_id'].astype(str)
+    else:
+        log['id'] = log['id'].astype(str)
 
     cat_features_dict = get_unique_values_for_categorical_features(log, categorical_features)
     print("Cat features dict: ", cat_features_dict)
@@ -177,7 +181,7 @@ if __name__ == "__main__":
     elif args.method == "random":
         print("Training Random...")
         # Random
-        rand_results = evaluate_random_baseline_per_agent(test_log, ks=ks, n_runs=1, random_state=SEED)
+        rand_results = evaluate_random_baseline_per_agent(test_log, train_log, ks=ks, n_runs=1, random_state=SEED)
         current_results = rand_results
 
     elif args.method == "lr_local":
@@ -310,11 +314,11 @@ if __name__ == "__main__":
     elif args.method == "fifo":
         print("Training FIFO...")
         # FIFO
-        fifo_results = evaluate_fifo_baseline_per_agent(test_log, ks=ks)
+        fifo_results = evaluate_fifo_baseline_per_agent(test_log, train_log, ks=ks)
         current_results = fifo_results
 
     # --- Append a single summary row to overall_results.csv ---
-    overall_path = os.path.join("results", "overall_results_BPI13.csv")
+    overall_path = os.path.join("results", "overall_results_BPI12W.csv")
     os.makedirs(os.path.dirname(overall_path), exist_ok=True)
 
     # Prepare summary payload

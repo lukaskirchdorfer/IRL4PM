@@ -3,7 +3,7 @@ import pandas as pd
 from typing import Any, Dict, List, Tuple
 
 # --- helper: build decision metadata (same logic as earlier) ---
-def build_decision_meta(log_df: pd.DataFrame) -> Tuple[List[dict], pd.DataFrame]:
+def build_decision_meta(log_df: pd.DataFrame, train_log_agents: List[str]) -> Tuple[List[dict], pd.DataFrame]:
     """
     Build evaluation decisions and candidate universes.
     Returns:
@@ -27,6 +27,8 @@ def build_decision_meta(log_df: pd.DataFrame) -> Tuple[List[dict], pd.DataFrame]
         raise ValueError("No arrival column found")
 
     for _, d in decisions_df.iterrows():
+        if pd.isna(d['agent']) or d['agent'] == '' or d['agent'] == 'nan' or d['agent'] not in train_log_agents:
+            continue
         t = d['start_timestamp']
         chosen = d[case_id_col]
         agent = d['agent']
@@ -60,6 +62,7 @@ def build_decision_meta(log_df: pd.DataFrame) -> Tuple[List[dict], pd.DataFrame]
 # --- random baseline (per agent), top-k evaluation ---
 def evaluate_random_baseline_per_agent(
     test_log: pd.DataFrame,
+    train_log: pd.DataFrame,
     ks: List[int] = [1, 2, 3],
     n_runs: int = 1,
     random_state: int = 0,
@@ -72,8 +75,9 @@ def evaluate_random_baseline_per_agent(
     Returns:
       { agent: {"top1_accuracy": ..., "top2_accuracy": ..., "top3_accuracy": ..., "accuracy": ...}, ... }
     """
+    train_log_agents = train_log['agent'].unique().tolist()
     rng = np.random.default_rng(random_state)
-    decisions, _ = build_decision_meta(test_log)
+    decisions, _ = build_decision_meta(test_log, train_log_agents)
 
     # accumulators: sum over runs, then divide by totals
     per_agent_hits_sum: Dict[Any, Dict[int, float]] = {}

@@ -157,6 +157,11 @@ def build_decision_dataset(
     if missing:
         raise ValueError(f"Missing required columns: {missing}")
 
+    # Coerce temporal columns to datetimes for safety
+    for col in ['start_timestamp', 'end_timestamp', 'arrival', 'enabled_time', 'due_date']:
+        if col in df.columns and not np.issubdtype(df[col].dtype, np.datetime64):
+            df[col] = pd.to_datetime(df[col], errors='coerce')
+
     # Only rows where a start happened (decision moments)
     decisions = df.dropna(subset=['start_timestamp']).copy()
     decisions = decisions.sort_values('start_timestamp')
@@ -171,6 +176,8 @@ def build_decision_dataset(
     decision_counter = 0
 
     for _, drow in decisions.iterrows():
+        if pd.isna(d['agent']) or d['agent'] == '' or d['agent'] == 'nan':
+            continue
         agent = drow['agent']
         t = drow['start_timestamp']
         chosen_case = drow[case_id_col]

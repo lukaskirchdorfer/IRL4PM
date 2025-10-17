@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from typing import List
 import json
 
@@ -12,6 +13,10 @@ def get_agent_trajectories(log: pd.DataFrame, numerical_features: List[str], cat
     Returns:
         trajectories: Dict[str, List[Tuple[List[dict], Any]]] of agent trajectories
     """
+    # Coerce temporal columns to datetimes for safety
+    for col in ['start_timestamp', 'end_timestamp', 'arrival', 'enabled_time', 'due_date']:
+        if col in log.columns and not np.issubdtype(log[col].dtype, np.datetime64):
+            log[col] = pd.to_datetime(log[col], errors='coerce')
     # Sort events by start time (when the agent made the decision)
     log = log.sort_values('start_timestamp').reset_index(drop=True)
 
@@ -51,21 +56,11 @@ def get_agent_trajectories(log: pd.DataFrame, numerical_features: List[str], cat
             case[feature] = getattr(row, feature)
         all_cases.append(case)
 
-    # # Track all arrival events
-    # all_cases = [{
-    #     'id': row.id,
-    #     'arrival': row.arrival,
-    #     'level': row.level,
-    #     'region': row.region,
-    #     'value': row.value,
-    #     'processing_time': row.processing_time,
-    #     'due_date': row.due_date,
-    # } for row in log.itertuples()]
-
     agents = log.agent.unique()
 
     # Extract trajectories for each agent
-    trajectories = {agent: [] for agent in agents}
+    # trajectories = {agent: [] for agent in agents}
+    trajectories = {}
 
     # build once after sorting
     first_take = (log.sort_values('start_timestamp')
@@ -73,6 +68,8 @@ def get_agent_trajectories(log: pd.DataFrame, numerical_features: List[str], cat
     taken_time = dict(zip(first_take[case_id_feature], first_take['start_timestamp']))
 
     for row in log.itertuples():
+        if pd.isna(row.agent) or row.agent == '' or row.agent == 'nan' or row.agent == 'Nan':
+            continue
         agent = row.agent
         case_id = getattr(row, case_id_feature)
         decision_time = row.start_timestamp
@@ -95,6 +92,8 @@ def get_agent_trajectories(log: pd.DataFrame, numerical_features: List[str], cat
         action = case_id
 
         # Record the (state, action) pair
+        if agent not in trajectories:
+            trajectories[agent] = []
         trajectories[agent].append((state, action))
 
         # Mark the case as assigned
