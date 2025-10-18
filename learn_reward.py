@@ -42,6 +42,8 @@ def prepare_data(trajectories, cat_features_dict, numerical_features, scaler=Non
             features, feature_names = case_to_features(case, cat_features_dict, numerical_features)
             scaled = scaler.transform([features])[0]
             state_features.append((case['id'], scaled))
+            # print(f"case['id']: {case['id']}, action_id: {action_id}")
+            # print(f"state: {state}")
             if case['id'] == action_id:
                 action_idx = i
         processed_trajectories.append((state_features, action_idx))

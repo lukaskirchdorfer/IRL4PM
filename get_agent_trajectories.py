@@ -34,7 +34,6 @@ def get_agent_trajectories(log: pd.DataFrame, numerical_features: List[str], cat
     if 'due_date' in log.columns:
         numerical_features.remove('time_until_due_date')
         numerical_features.append('due_date')
-
     if 'case_id' in log.columns:
         case_id_feature = 'case_id'
     else:
@@ -49,6 +48,7 @@ def get_agent_trajectories(log: pd.DataFrame, numerical_features: List[str], cat
         case = {
             'id': getattr(row, case_id_feature),
             'arrival': getattr(row, arrival_feature),
+            'start_timestamp': getattr(row, 'start_timestamp'),
         }
         for feature in numerical_features:
             case[feature] = getattr(row, feature)
@@ -56,17 +56,7 @@ def get_agent_trajectories(log: pd.DataFrame, numerical_features: List[str], cat
             case[feature] = getattr(row, feature)
         all_cases.append(case)
 
-    agents = log.agent.unique()
-
-    # Extract trajectories for each agent
-    # trajectories = {agent: [] for agent in agents}
     trajectories = {}
-
-    # build once after sorting
-    first_take = (log.sort_values('start_timestamp')
-                    .drop_duplicates(case_id_feature, keep='first'))
-    taken_time = dict(zip(first_take[case_id_feature], first_take['start_timestamp']))
-
     for row in log.itertuples():
         if pd.isna(row.agent) or row.agent == '' or row.agent == 'nan' or row.agent == 'Nan':
             continue
@@ -74,19 +64,25 @@ def get_agent_trajectories(log: pd.DataFrame, numerical_features: List[str], cat
         case_id = getattr(row, case_id_feature)
         decision_time = row.start_timestamp
 
-        # Construct the queue at decision time t with same-time exclusion (except chosen)
         queue = []
         for case in all_cases:
             if case['arrival'] <= decision_time:
-                tt = taken_time.get(case['id'], None)
-                if tt is None or tt > decision_time or case['id'] == case_id:
-                    queue.append(case)
+                if case['start_timestamp'] >= decision_time:
+                    if case['id'] in [case['id'] for case in queue]:
+                        if case['start_timestamp'] < [case['start_timestamp'] for case in queue if case['id'] == case['id']][0]:
+                            queue.remove([case for case in queue if case['id'] == case['id']][0])
+                            queue.append(case)
+                    else:
+                        queue.append(case)
 
         state = [dict(c) for c in queue]
         for case in state:
             case['time_since_arrival'] = (decision_time - case['arrival']).total_seconds() / 60
             if 'due_date' in case:
                 case['time_until_due_date'] = (case['due_date'] - decision_time).total_seconds() / 60
+
+        if state is None or len(state) == 0:
+            print(f"state is None or len(state) == 0 for agent {agent} and case {case_id}")
 
         # The action is the selected case
         action = case_id

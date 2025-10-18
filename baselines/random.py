@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from typing import Any, Dict, List, Tuple
 
-# --- helper: build decision metadata (same logic as earlier) ---
+# --- helper: build decision metadata ---
 def build_decision_meta(log_df: pd.DataFrame, train_log_agents: List[str]) -> Tuple[List[dict], pd.DataFrame]:
     """
     Build evaluation decisions and candidate universes.
@@ -13,7 +13,7 @@ def build_decision_meta(log_df: pd.DataFrame, train_log_agents: List[str]) -> Tu
     case_id_col = "case_id" if "case_id" in log_df.columns else "id"
     attrib_cols = log_df.columns.tolist()
 
-    all_cases = log_df[attrib_cols].drop_duplicates(case_id_col)
+    all_cases = log_df.copy()
     decisions_df = log_df.dropna(subset=['start_timestamp']).copy().sort_values('start_timestamp')
 
     decisions = []
@@ -32,22 +32,17 @@ def build_decision_meta(log_df: pd.DataFrame, train_log_agents: List[str]) -> Tu
         t = d['start_timestamp']
         chosen = d[case_id_col]
         agent = d['agent']
-
-        # candidates available at time t
-        # cand = all_cases[
-        #     (all_cases['arrival'] <= t) &
-        #     ((all_cases['start_timestamp'].isna()) | (all_cases['start_timestamp'] >= t))
-        # ]
         cand = all_cases[
             (all_cases[arrival_col] <= t) &
-            (
-                (all_cases['start_timestamp'].isna()) |
-                (all_cases['start_timestamp'] > t) |
-                (all_cases[case_id_col] == chosen)
-            )
+            (all_cases['start_timestamp'] >= t) 
         ]
+        # check if mutliple cases with same id are in candidates, if so, remove cases in candidates that are not the first one based on start_timestamp
+        cand = cand.sort_values('start_timestamp')
+        cand = cand.drop_duplicates(case_id_col, keep='first')
         cids = cand[case_id_col].tolist()
-        if chosen not in cids or len(cids) == 0:
+        if chosen not in cids:
+            print(f"chosen_case {chosen} not in candidate_ids {cids}")
+            print(f"decision time: {t}, chosen case start time: {d['start_timestamp']}, chosen case arrival time: {d[arrival_col]}")
             continue
 
         decisions.append({
@@ -136,7 +131,3 @@ def evaluate_random_baseline_per_agent(
         print(f"  Accuracy (Top-1): {metrics['accuracy']:.4f}")
 
     return results
-
-# --- example usage ---
-# rand_results = evaluate_random_baseline_per_agent(test_log, ks=[1,2,3], n_runs=1000, random_state=42)
-# print(rand_results)

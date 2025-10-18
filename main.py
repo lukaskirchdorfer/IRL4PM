@@ -37,31 +37,31 @@ if __name__ == "__main__":
     parser.add_argument("--irl-epochs", type=int, default=100, help="Number of epochs for IRL")
 
     # Decision tree
-    parser.add_argument("--dt-negatives", type=int, default=50, help="Negatives per positive for DT training")
+    parser.add_argument("--dt-negatives", type=int, default=10, help="Negatives per positive for DT training")
     parser.add_argument("--dt-max-depth", type=int, default=5, help="Max depth for DT (use -1 for None)")
     
     # Logistic Regression
-    parser.add_argument("--lr-negatives", type=int, default=50, help="Negatives per positive for LR training")
+    parser.add_argument("--lr-negatives", type=int, default=10, help="Negatives per positive for LR training")
     parser.add_argument("--lr-C", type=float, default=1.0, help="Regularization strength for LR (inverse of C)")
     parser.add_argument("--lr-max-iter", type=int, default=1000, help="Maximum iterations for LR")
     parser.add_argument("--lr-standardize", action='store_true', help="Standardize features for LR")
     
     # SVM
-    parser.add_argument("--svm-negatives", type=int, default=50, help="Negatives per positive for SVM training")
+    parser.add_argument("--svm-negatives", type=int, default=10, help="Negatives per positive for SVM training")
     parser.add_argument("--svm-C", type=float, default=1.0, help="Regularization strength for SVM")
     parser.add_argument("--svm-kernel", type=str, default='rbf', help="Kernel type for SVM")
     parser.add_argument("--svm-gamma", type=str, default='scale', help="Gamma parameter for SVM")
     parser.add_argument("--svm-standardize", action='store_true', help="Standardize features for SVM")
     
     # XGBoost
-    parser.add_argument("--xgb-negatives", type=int, default=50, help="Negatives per positive for XGBoost training")
+    parser.add_argument("--xgb-negatives", type=int, default=10, help="Negatives per positive for XGBoost training")
     parser.add_argument("--xgb-n-estimators", type=int, default=100, help="Number of estimators for XGBoost")
     parser.add_argument("--xgb-max-depth", type=int, default=6, help="Max depth for XGBoost")
     parser.add_argument("--xgb-learning-rate", type=float, default=0.1, help="Learning rate for XGBoost")
     parser.add_argument("--xgb-subsample", type=float, default=0.8, help="Subsample ratio for XGBoost")
     
     # Neural Network
-    parser.add_argument("--nn-negatives", type=int, default=50, help="Negatives per positive for NN training")
+    parser.add_argument("--nn-negatives", type=int, default=10, help="Negatives per positive for NN training")
     parser.add_argument("--nn-hidden-layers", type=str, default="100,50", help="Hidden layer sizes for NN (comma-separated)")
     parser.add_argument("--nn-activation", type=str, default='relu', help="Activation function for NN")
     parser.add_argument("--nn-solver", type=str, default='adam', help="Solver for NN")
@@ -105,7 +105,9 @@ if __name__ == "__main__":
     print("Categorical features: ", categorical_features)
 
     # log = pd.read_csv(name_output_file, parse_dates=['arrival', 'start_timestamp', 'end_timestamp', 'due_date'])
-    log = pd.read_csv(name_output_file, parse_dates=temporal_columns)
+    log = pd.read_csv(name_output_file)
+    for col in temporal_columns:
+        log[col] = pd.to_datetime(log[col], format='mixed').dt.tz_localize(None)
 
     # agent column should be converted to string
     log['agent'] = log['agent'].astype(str)
