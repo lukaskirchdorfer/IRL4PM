@@ -4,6 +4,6 @@ numerical_features:
   - loan_amount
   - time_since_arrival # if this is set, there must be a column called arrival or enabled_time in the log
 temporal_columns:
-  - enabled_time
+  - arrival
   - start_timestamp
-  - end_timestamp
+  # - end_timestamp
